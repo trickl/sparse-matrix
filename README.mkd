@@ -19,7 +19,6 @@ Currently depends on the Colt java matrix implementation.
 
 License and conditions of use
 =============================
-
 The program is available under GNU General Public License (see file `license-gpl.txt` in the distribution package for the text of the license).
 
 Example usage
