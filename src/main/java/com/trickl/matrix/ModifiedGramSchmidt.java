@@ -1,0 +1,151 @@
+package com.trickl.matrix;
+
+import cern.colt.function.IntDoubleProcedure;
+import cern.colt.function.IntIntDoubleFunction;
+import cern.colt.map.OpenIntDoubleHashMap;
+import cern.colt.matrix.DoubleMatrix1D;
+import cern.colt.matrix.DoubleMatrix2D;
+import cern.colt.matrix.impl.DenseDoubleMatrix1D;
+import cern.colt.matrix.impl.SparseDoubleMatrix2D;
+import cern.colt.matrix.linalg.Algebra;
+import cern.jet.math.Functions;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
+
+// Gram-Schmidt process for orthnormalizing a set of vectors
+// See http://en.wikipedia.org/wiki/Gram%E2%80%93Schmidt_process
+public class ModifiedGramSchmidt {
+
+   private DoubleMatrix2D A;
+   private DoubleMatrix2D S;
+   private static final double tolerance = 1e-12;
+   private int sRank;
+   private int sMaxRank;
+   Algebra algebra = new Algebra();
+
+   public ModifiedGramSchmidt(DoubleMatrix2D A) {
+      this(A, Integer.MAX_VALUE);
+   }
+
+   public ModifiedGramSchmidt(DoubleMatrix2D A, int sMaxRank) {
+      this.A = A;
+      this.S = A.like(A.rows(), A.columns());
+      this.sMaxRank = sMaxRank;
+      orthonormalize();
+   }
+
+   protected void orthonormalize() {
+      if (A instanceof SparseDoubleMatrix2D) {
+         // Optimized for compressed sparse row matrices
+         CompressedSparseRow csr = new CompressedSparseRowAdapter((SparseDoubleMatrix2D) A);
+         int[] aColIndices = csr.getColumnIndices();
+         int[] aRowPointers = csr.getRowPointers();
+         double[] aData = csr.getData();
+         int[] sRowPointers = new int[S.rows() + 1];
+         List<Integer> sColIndices = new LinkedList<Integer>();
+
+         for (int arow = 0; arow < A.rows(); ++arow) {
+            final OpenIntDoubleHashMap residual = new OpenIntDoubleHashMap(A.columns());
+            for (int k = aRowPointers[arow]; k < aRowPointers[arow + 1]; ++k) {
+               int column = aColIndices[k];
+               residual.put(column, aData[k]);
+            }
+
+            for (int srow = 0; srow < sRank; ++srow) {
+               final double[] coefficient = new double[1];
+               final int srowf = srow;
+               residual.forEachPair(new IntDoubleProcedure() {
+
+                  @Override
+                  public boolean apply(int first, double value) {
+                     coefficient[0] += value * S.getQuick(srowf, first);
+                     return true;
+                  }
+               });
+
+               for (int k = sRowPointers[srow]; k < sRowPointers[srow + 1]; ++k) {
+                  int scol = sColIndices.get(k);
+                  residual.put(scol, residual.get(scol) - coefficient[0] * S.getQuick(srow, scol));
+               }
+            }
+
+            if (!residual.isEmpty()) {
+               final double[] residualNorm = new double[1];
+               residual.forEachPair(new IntDoubleProcedure() {
+
+                  @Override
+                  public boolean apply(int first, double value) {
+                     residualNorm[0] += value * value;
+                     return true;
+                  }
+               });
+               residualNorm[0] = Math.sqrt(residualNorm[0]);
+               final int[] sRowColIndices = new int[residual.size()];
+               final int[] sColIndex = new int[1];
+               residual.forEachPair(new IntDoubleProcedure() {
+
+                  @Override
+                  public boolean apply(int first, double value) {
+                     S.setQuick(sRank, first, value / residualNorm[0]);
+                     sRowColIndices[sColIndex[0]++] = first;
+                     return true;
+                  }
+               });
+
+               Arrays.sort(sRowColIndices);
+               for (int k = 0; k < sRowColIndices.length; k++) {
+                  sColIndices.add(sRowColIndices[k]);
+               }
+               sRowPointers[sRank + 1] = sRowPointers[sRank] + residual.size();
+               sRank++;
+            }
+         }
+      } else {
+         for (int arow = 0; arow < A.rows(); ++arow) {
+            // For dense matrices
+            DoubleMatrix1D residual = A.viewRow(arow);
+            for (int srow = 0; srow < sRank; ++srow) {
+               double coefficient = residual.zDotProduct(S.viewRow(srow));
+               residual.assign(S.viewRow(srow), Functions.plusMult(-coefficient));
+            }
+
+            double residualNorm = Math.sqrt(algebra.norm2(residual));
+            if (residualNorm > tolerance) {
+               S.viewRow(sRank).assign(0);
+               S.viewRow(sRank).assign(residual, Functions.plusMult(1. / residualNorm));
+               sRank++;
+            }
+         }
+      }
+
+      // Consolidate the output
+      if (sRank < S.rows() || sRank > sMaxRank) {
+         // Consolidate the output
+         int sNewRank = Math.min(sRank, sMaxRank);
+         final DoubleMatrix2D Scopy = S.like(sNewRank, S.columns());
+         // Aggregate
+         S.forEachNonZero(new IntIntDoubleFunction() {
+
+            @Override
+            public double apply(int first, int second, double value) {
+               int row = Math.min(first, sMaxRank - 1);
+               double norm2 = first < sMaxRank - 1 ? 1 : sRank - sMaxRank + 1;
+               Scopy.setQuick(row, second, Scopy.getQuick(row, second) + value / Math.sqrt(norm2));
+               return value;
+            }
+         });
+
+         S = Scopy;
+         sRank = sNewRank;
+      }
+   }
+
+   public DoubleMatrix2D getS() {
+      return S;
+   }
+
+   public int getRank() {
+      return sRank;
+   }
+}
