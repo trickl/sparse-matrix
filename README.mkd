@@ -1,6 +1,6 @@
 Introduction
 ============
-This is a Java library that ...
+This is a Java library that provides extra functionality for sparse matrices that is missing in Colt. In particular, sparse matrix multiplication in Colt is often inefficient and this library provides several ways to address that. Additionally, this library offers some implementation indifferent interfaces for compressed storage of sparse matrices. Several sparse algorithms require compressed storage for performance. It is hoped, that in the future, this library could be further developed as a bridge between the various java matrix implementations (MTJ, Colt, Jama) and a set of standardised interfaces other libraries can depend on. Then libraries that use trickl-matrix could be decoupled from the particular implementation chosen. 
 
 Downloads
 =========
@@ -10,15 +10,18 @@ The source can be also retrieved straight from the Git repository: `git clone gi
 
 Features
 ========
+Some standard interfaces for compressed row and column sparse matrices, as well as an adapter for Colt matrices.
+Efficient sparse routines for Modified Gram Schmidt and utilities for efficient multiplication of sparse matrices.
 
 Requirements
 ------------
+Currently depends on the Colt java matrix implementation. 
 
 License and conditions of use
 =============================
 
-The wrapper program is available under GNU General Public License (see file `license-gpl.txt` in the distribution package for the text of the license).
+The program is available under GNU General Public License (see file `license-gpl.txt` in the distribution package for the text of the license).
 
 Example usage
 =============
-
+Some Junit tests are provided and should be used to consult usage.
