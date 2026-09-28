@@ -5,11 +5,15 @@
     This is a Java library that provides extra functionality for sparse matrices that is missing in Colt. In particular, sparse matrix multiplication in Colt is often inefficient and this library provides several ways to address that. Additionally, this library offers some implementation indifferent interfaces for compressed storage of sparse matrices. Several sparse algorithms require compressed storage for performance. It is hoped, that in the future, this library could be further developed as a bridge between the various java matrix implementations (MTJ, Colt, Jama) and a set of standardised interfaces other libraries can depend on. Then libraries that use trickl-matrix could be decoupled from the particular implementation chosen. 
   </description>
   <parent>
-     <groupId>com.trickl</groupId>
-     <artifactId>parent</artifactId>
-     <version>0.1-SNAPSHOT</version>
-     <relativePath>../parent/pom.xml</relativePath>
+    <groupId>com.trickl</groupId>
+    <artifactId>microservices-parent</artifactId>
+    <version>1.76</version>
+    <relativePath/>
   </parent>
+  <properties>
+    <!-- Library predates the shared Checkstyle rules -->
+    <checkstyle.skip>true</checkstyle.skip>
+  </properties>
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.trickl</groupId>
   <artifactId>matrix</artifactId>
@@ -48,5 +52,30 @@
       <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <!-- Runs the JUnit 4 tests on the JUnit Platform -->
+      <groupId>org.junit.vintage</groupId>
+      <artifactId>junit-vintage-engine</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
+  <build>
+    <plugins>
+      <plugin>
+        <!-- A library, not a Spring Boot application -->
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+        <configuration>
+          <skip>true</skip>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-deploy-plugin</artifactId>
+        <configuration>
+          <skip>false</skip>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
 </project>
